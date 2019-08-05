@@ -1,0 +1,1 @@
+php atoum.phar -d tests -af autoload.php

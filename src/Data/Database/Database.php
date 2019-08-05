@@ -4,8 +4,9 @@
 //However it will also cause our code to break for some reason
 namespace BugTracker\Data\Database;
 
-use BugTracker\Helpers\BugString;
+use BugTracker\Util\BugString;
 use BugTracker\Exceptions\WrongArgumentException;
+use BugTracker\Exceptions\BadQueryException;
 
 class Database {
 
@@ -46,10 +47,9 @@ class Database {
      * @throws WrongArgumentException
      * @return Database The instance of the object
      */
-    public function Where(array $statements) : Database {
-       
+    public function Where(array $statements) : Database 
+    {
         $this->addWhereToQuery("AND", $statements);
-
         return $this;
     }
 
@@ -60,9 +60,9 @@ class Database {
      * @throws WrongArgumentException
      * @return Database The instance of the object
      */
-    public function OrWhere(array $statements) : Database {
+    public function OrWhere(array $statements) : Database 
+    {
         $this->addWhereToQuery("OR", $statements);
-
         return $this;
     }
 
@@ -86,22 +86,25 @@ class Database {
     private function addWhereToQuery(string $operator, array $statements) {
         if(count($statements) == 0) {
             throw new WrongArgumentException("At least one where clause should be specified");
+        } else if($this->query == "") {
+            throw new BadQueryException("Query should start with a SELECT statement");
         }
 
         //TODO refactor
         foreach($statements as $statement) {
-            if(count($statement != 2)) {
-                throw new WrongArgumentException("Subarray should have the format [ 'column', 'operator', 'value' ]");
+            if(count($statement) != 3) {
+                throw new WrongArgumentException("Subarray should have the format [ 'column', 'operator', 'value' ], but actual length was " . count($statement));
             }
 
             //? = prepared statements
-            $key = $statement[0];
             $count = 0;
+            $key = $statement[0];
+
             while(array_key_exists($key, $this->values)) {
-                $key .= ++$count;
+                $key = $statement[0] . ++$count;
             }
-            
-            $this->query .= ($this->whereAdded ? $operator : "WHERE") . " " . BugString::Format("{0} {1} :{0} ", $key, $statement[1]);
+
+            $this->query .= ($this->whereAdded ? $operator : "WHERE") . " " . BugString::Format("{0} {1} :{2} ", $statement[0], $statement[1], $key);
             $this->values[$key] = $statement[2];
 
             $this->whereAdded = true;
